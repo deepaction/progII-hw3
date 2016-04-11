@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <signal.h>
 
-volatile int i;
+volatile sig_atomic_t i;
 
 void failcheck(int rv, int line)
 {
@@ -19,17 +19,18 @@ void failcheck(int rv, int line)
 
 static void handler(int sig)
 {
-	printf("Reset to 0\n");
+	
+ 	failcheck(write(1, "Reset to 0\n", 12), __LINE__-1);
 	i=0;
 }
-
 
 int main(int argc, char *argv[])
 {
 	int M, rv;
 	pid_t pid;
-	sigset_t set, p_set;
+	sigset_t set;
 	struct sigaction act={{0}};
+	char tmp[64];
 	
 	if(argc!=5)
 	{
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
 	}
 	
 	act.sa_handler=handler;
+	
 	rv=sigaction(SIGUSR1, &act, NULL);
 	failcheck(rv, __LINE__-1);
 	
@@ -66,18 +68,25 @@ int main(int argc, char *argv[])
 			rv=sigprocmask(SIG_UNBLOCK, &set, NULL);
 			failcheck(rv, __LINE__-1);
 		}
-		printf("%d: %d/%d\n", (int)pid, i, M);
-
-// 		rv=write(1, &pid, sizeof(pid_t));
-// 		failcheck(rv, __LINE__-1);
-// 		rv=write(1, ": ", sizeof(char)*2);
-// 		failcheck(rv, __LINE__-1);
-// 		rv=write(1, &i, sizeof(int));
-// 		failcheck(rv, __LINE__-1);
-// 		rv=write(1, "/", sizeof(char));
-// 		failcheck(rv, __LINE__-1);
-// 		rv=write(1, &M, sizeof(int));
-// 		failcheck(rv, __LINE__-1);
+			
+		sprintf(tmp, "%d", pid);
+ 		rv=write(1, tmp, strlen(tmp));
+ 		failcheck(rv, __LINE__-1);
+ 		
+ 		rv=write(1, ": ", strlen(": "));
+ 		failcheck(rv, __LINE__-1);
+ 		
+ 		sprintf(tmp, "%d", i);
+ 		rv=write(1, tmp, strlen(tmp));
+ 		failcheck(rv, __LINE__-1);
+ 		
+ 		rv=write(1, "/", strlen("/"));
+ 		failcheck(rv, __LINE__-1);
+ 		
+		sprintf(tmp, "%d\n", M);
+ 		rv=write(1, tmp, strlen(tmp));
+ 		failcheck(rv, __LINE__-1);
+		
 		sleep(5);
 	}
 	
