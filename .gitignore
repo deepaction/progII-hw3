@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 test
+hw3
 
 # Debug files
 *.dSYM/
