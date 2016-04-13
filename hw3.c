@@ -6,13 +6,11 @@
 #include <errno.h>
 #include <signal.h>
 
-#define NAME_SIZE 256
 #define ARGUMENT_NUMBER 20
 
 struct list
 {
 	pid_t pid;
-	char *name;
 	char *args[ARGUMENT_NUMBER];
 	int run;
 	struct list *next;
@@ -32,13 +30,14 @@ void list_init()
 	head=(struct list *)malloc(sizeof(struct list));
 	if(head==NULL)
 	{
-		fprintf(stderr,"%s: Error in dynamic memory allocation (Error in line: %d)\n", __FILE__, __LINE__-3);
+		fprintf(stderr,"%s: Could not allocate dynamic memory (Error in line: %d)\n", __FILE__, __LINE__-3);
 		exit(-1);
 	} 	
+	
 	head->next=head;
 }
 
-struct list *create_list_entry(pid_t pid, char *name, char *args[ARGUMENT_NUMBER], int run) 
+struct list *create_list_entry(pid_t pid, char *args[ARGUMENT_NUMBER], int run) 
 {
 	
 	int i;
@@ -47,11 +46,11 @@ struct list *create_list_entry(pid_t pid, char *name, char *args[ARGUMENT_NUMBER
 	curr=(struct list *)malloc(sizeof(struct list));
 	if(curr==NULL)
 	{
-		fprintf(stderr,"%s: Error in dynamic memory allocation (Error in line: %d)\n", __FILE__, __LINE__-3);
+		fprintf(stderr,"%s: Could not allocate dynamic memory (Error in line: %d)\n", __FILE__, __LINE__-3);
 		exit(-1);
 	}
+	
 	curr->pid=pid;
-	curr->name=strdup(name);
 	for(i=0; i<ARGUMENT_NUMBER; i++)
 	{
 		if(args[i]==NULL)
@@ -62,15 +61,12 @@ struct list *create_list_entry(pid_t pid, char *name, char *args[ARGUMENT_NUMBER
 	curr->args[i]=NULL;
 	curr->run=run;
 	
-	return curr;
+	return(curr);
 }
 
 void list_insert(struct list *curr)
 {
-	
 	struct list *temp = head;
-// 	printf("head: %p\n", head);
-// 	sleep(1);
 	
 	if(head->next == head) 
 	{
@@ -103,7 +99,6 @@ void list_delete(pid_t pid)
 		{
 			freenode=temp->next;
 			temp->next=temp->next->next;
-			free(freenode->name);
 			for(i=0; i<ARGUMENT_NUMBER; i++)
 				free(freenode->args[i]);
 			free(freenode);
@@ -112,12 +107,17 @@ void list_delete(pid_t pid)
 		}
 		temp=temp->next;
 	}
-	fprintf(stderr,"%s: Node to be deleted does not exist (Error in line: %d)\n", __FILE__, __LINE__);
+	
+	fprintf(stderr,"%s: Node to be deleted does not exist (Error in line: %d)\n", __FILE__, __LINE__-21);
+
+	free(temp);
+	exit(-1);
 }
 
 struct list *list_search()
 {
 	struct list *temp = head;
+	
 	while(temp->next!=head)
 	{
 		if (temp->next->run==1) 
@@ -126,12 +126,15 @@ struct list *list_search()
 		}
 		temp=temp->next;
 	}
-	return NULL;
+	
+	fprintf(stderr,"%s: Could not find a running process (Error in line: %d)\n", __FILE__, __LINE__-13);
+	exit(-1);
 }
 
 struct list *list_next()
 {
 	struct list *temp = head;
+	
 	while(temp->next!=head)
 	{
 		if (temp->next->run==1) 
@@ -142,7 +145,9 @@ struct list *list_next()
 		}
 		temp=temp->next;
 	}
-	return NULL;
+	
+	fprintf(stderr,"%s: Could not find a running process (Error in line: %d)\n", __FILE__, __LINE__-15);
+	exit(-1);
 }
 
 int list_empty()
@@ -157,9 +162,11 @@ int list_print()
 {
 	int total_nodes=0, i;
 	struct list *temp = head;
+	
 	while(temp->next!=head)
 	{
 		printf("pid: %d, name: (", temp->next->pid);
+		
 		for(i=0; i<ARGUMENT_NUMBER; i++)
 		{	
 			if(temp->next->args[i]==NULL)
@@ -169,14 +176,17 @@ int list_print()
 			else
 				printf(", %s", temp->next->args[i]);
 		}	
+		
 		if(temp->next->run==1)
 			printf(") (R)\n");
 		else
 			printf(")\n");
+		
 		temp=temp->next;
 		total_nodes++;
 	}
-	return total_nodes;
+	
+	return(total_nodes);
 }
 
 int main(int argc, char *argv[])
@@ -184,27 +194,26 @@ int main(int argc, char *argv[])
 	int i;
 	char *args[ARGUMENT_NUMBER];
 	
-	
 	args[0]=strdup("./test");
 	for(i=1; i<5; i++)
 		args[i]=strdup("a");
 	
 	args[5]=NULL;
 		
-		
-
 	list_init();
-	struct list *node = create_list_entry( 12345, "test", args,  1);
+	struct list *node = create_list_entry( 12345, args,  0);
 	list_insert(node);
-	struct list *node1 = create_list_entry( 54355, "test3", args,  0);
+	struct list *node1 = create_list_entry( 54355, args,  1);
 	list_insert(node1);
-	//list_delete(545);
-	struct list *node2 = create_list_entry( 545, "test34", args,  0);
+	struct list *node2 = create_list_entry( 545, args,  0);
 	list_insert(node2);
 	node=list_search();
 	node=list_next();
+	list_delete(545);
 	
 	printf("%d\n", list_print());
+	
+	free(head);
 	
 	return(0);
 }
