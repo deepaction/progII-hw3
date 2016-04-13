@@ -12,11 +12,20 @@
 struct list
 {
 	pid_t pid;
-	char name[NAME_SIZE];
-	char args[ARGUMENT_NUMBER][NAME_SIZE];
+	char *name;
+	char *args[ARGUMENT_NUMBER];
 	int run;
 	struct list *next;
 } *head;
+
+void failcheck(int rv, int line)
+{
+	if(rv<0)
+	{
+		fprintf(stderr,"%s: %s (Error in line: %d)\n", __FILE__, strerror(errno) , line);
+		exit(-1);
+	}
+}
 
 void list_init()
 {
@@ -29,11 +38,11 @@ void list_init()
 	head->next=head;
 }
 
-void list_insert(pid_t pid, char name[NAME_SIZE], char args[ARGUMENT_NUMBER][NAME_SIZE], int run)
+struct list *create_list_entry(pid_t pid, char *name, char *args[ARGUMENT_NUMBER], int run) 
 {
+	
 	int i;
 	struct list *curr;
-	struct list *temp = head;
 	
 	curr=(struct list *)malloc(sizeof(struct list));
 	if(curr==NULL)
@@ -42,13 +51,32 @@ void list_insert(pid_t pid, char name[NAME_SIZE], char args[ARGUMENT_NUMBER][NAM
 		exit(-1);
 	}
 	curr->pid=pid;
-	strcpy(curr->name, name);
+	curr->name=strdup(name);
 	for(i=0; i<ARGUMENT_NUMBER; i++)
-		strcpy(curr->args[i], args[i]);
+	{
+		if(args[i]==NULL)
+			break;
+		curr->args[i]=strdup(args[i]);
+		
+	}
+	curr->args[i]=NULL;
 	curr->run=run;
 	
-	if(head->next == head)
+	return curr;
+}
+
+void list_insert(struct list *curr)
+{
+	
+	struct list *temp = head;
+// 	printf("head: %p\n", head);
+// 	sleep(1);
+	
+	if(head->next == head) 
+	{
 		head->next = curr;
+		curr->next = head;
+	}
 	else
     {
 		while(1) 
@@ -64,21 +92,119 @@ void list_insert(pid_t pid, char name[NAME_SIZE], char args[ARGUMENT_NUMBER][NAM
 	}
 }
 
-void failcheck(int rv, int line)
+void list_delete(pid_t pid)
 {
-	if(rv<0)
+	int i;
+	struct list *freenode;
+	struct list *temp = head;
+	while(temp->next!=head)
 	{
-		fprintf(stderr,"%s: %s (Error in line: %d)\n", __FILE__, strerror(errno) , line);
-		exit(-1);
+		if (temp->next->pid == pid) 
+		{
+			freenode=temp->next;
+			temp->next=temp->next->next;
+			free(freenode->name);
+			for(i=0; i<ARGUMENT_NUMBER; i++)
+				free(freenode->args[i]);
+			free(freenode);
+			return;
+			
+		}
+		temp=temp->next;
 	}
+	fprintf(stderr,"%s: Node to be deleted does not exist (Error in line: %d)\n", __FILE__, __LINE__);
 }
 
+struct list *list_search()
+{
+	struct list *temp = head;
+	while(temp->next!=head)
+	{
+		if (temp->next->run==1) 
+		{
+			return(temp->next);
+		}
+		temp=temp->next;
+	}
+	return NULL;
+}
 
+struct list *list_next()
+{
+	struct list *temp = head;
+	while(temp->next!=head)
+	{
+		if (temp->next->run==1) 
+		{
+			if(temp->next->next==head)
+				return(temp->next->next->next);
+			return(temp->next->next);
+		}
+		temp=temp->next;
+	}
+	return NULL;
+}
 
+int list_empty()
+{
+	if(head->next==head)
+		return(0);
+	else
+		return(-1);
+}
+
+int list_print()
+{
+	int total_nodes=0, i;
+	struct list *temp = head;
+	while(temp->next!=head)
+	{
+		printf("pid: %d, name: (", temp->next->pid);
+		for(i=0; i<ARGUMENT_NUMBER; i++)
+		{	
+			if(temp->next->args[i]==NULL)
+				break;
+			if(i==0)
+				printf("%s ", temp->next->args[i]);
+			else
+				printf(", %s", temp->next->args[i]);
+		}	
+		if(temp->next->run==1)
+			printf(") (R)\n");
+		else
+			printf(")\n");
+		temp=temp->next;
+		total_nodes++;
+	}
+	return total_nodes;
+}
 
 int main(int argc, char *argv[])
 {
+	int i;
+	char *args[ARGUMENT_NUMBER];
 	
+	
+	args[0]=strdup("./test");
+	for(i=1; i<5; i++)
+		args[i]=strdup("a");
+	
+	args[5]=NULL;
+		
+		
+
+	list_init();
+	struct list *node = create_list_entry( 12345, "test", args,  1);
+	list_insert(node);
+	struct list *node1 = create_list_entry( 54355, "test3", args,  0);
+	list_insert(node1);
+	//list_delete(545);
+	struct list *node2 = create_list_entry( 545, "test34", args,  0);
+	list_insert(node2);
+	node=list_search();
+	node=list_next();
+	
+	printf("%d\n", list_print());
 	
 	return(0);
 }
