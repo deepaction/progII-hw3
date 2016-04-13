@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 	list_insert(node2);
 	node=list_search();
 	node=list_next();
-	list_delete(545);
+	//list_delete(545);
 	
 	printf("%d\n", list_print());
 	
