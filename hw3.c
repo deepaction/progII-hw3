@@ -1,7 +1,6 @@
 #include <sys/types.h>
-#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +23,8 @@ void failcheck(int rv, int line)
 {
 	if(rv<0)
 	{
+		if(errno==ECHILD)
+			return;
 		fprintf(stderr,"%s: %s (Error in line: %d)\n", __FILE__, strerror(errno) , line);
 		exit(-1);
 	}
@@ -195,12 +196,18 @@ int list_print()
 
 int main(int argc, char *argv[])
 {
-	int i=0, rv, fd;
+	int i=0, rv;
 	pid_t pid;
 	char *args[ARGUMENT_NUMBER];
 	char *command;
 	char *arguments;
 	char buf[NAME_SIZE];
+	struct sigaction act={{0}};
+	
+	act.sa_handler=SIG_IGN;
+	
+	rv=sigaction(SIGUSR1, &act, NULL);
+	failcheck(rv, __LINE__-1);
 	
 // 	args[0]=strdup("./test");
 // 	for(i=1; i<5; i++)
@@ -225,14 +232,31 @@ int main(int argc, char *argv[])
 	
 	do
 	{
+		pid=waitpid(-1, NULL, WNOHANG);
+		failcheck(pid, __LINE__-1);
+		if(pid>0)
+			list_delete(pid);
+		
 		printf("$ ");
 		fgets(buf, NAME_SIZE, stdin);
 		command=strtok(buf, "  \n");
 		
+		pid=waitpid(-1, NULL, WNOHANG);
+		failcheck(pid, __LINE__-1);
+		if(pid>0)
+			list_delete(pid);
+		
 		if((strcmp(command, "quit")!=0)&&(strcmp(command, "info")!=0))
 		{
+			if((strcmp(command, "exec")!=0)&&(strcmp(command, "term")!=0)&&(strcmp(command, "sig")!=0))
+			{
+				printf("Invalid command\n");
+				continue;
+			}
+			
 			if(strcmp(command, "exec")==0)
 			{
+				i=0;
 				arguments=command;
 				while(arguments!=NULL)
 				{
@@ -247,28 +271,32 @@ int main(int argc, char *argv[])
 				
 				pid=fork();
 					
-					if(pid==0)
-					{
-// 						fd=open("test.out", O_CREAT|O_TRUNC|O_WRONLY, 0766);
-// 						dup2(1, fd);
-						rv=execvp(args[0], args);
-						failcheck(rv,__LINE__-1);
-					}
-					printf("%d\n", pid);
-					list_insert(create_list_entry(pid, args,  0));
+				if(pid==0)
+				{
+					act.sa_handler=SIG_DFL;
+	
+					rv=sigaction(SIGUSR1, &act, NULL);
+					failcheck(rv, __LINE__-1);
+					
+					rv=execvp(args[0], args);
+					failcheck(rv,__LINE__-1);
+				}
+				//printf("%d\n", pid);
+				list_insert(create_list_entry(pid, args,  0));
 			}
 			else
 			{
 				pid=atoi(strtok(NULL, " "));
 				if(strcmp(command, "term")==0)
 				{
-					;
+					rv=kill(pid, SIGTERM);
+					failcheck(pid, __LINE__-1);
 				}
-				else
+				else if(strcmp(command, "sig")==0)
 				{
-					;
+					rv=kill(pid, SIGUSR1);
+					failcheck(pid, __LINE__-1);
 				}
-					
 			}
 		}
 		else if(strcmp(command, "info")==0)
@@ -277,12 +305,11 @@ int main(int argc, char *argv[])
 				list_print();
 			else
 				printf("There are currently no active processes\n");
-		}	
-				
+		}
 		
-		//printf("%d\n", pid);
 		
 	}while(strcmp(command, "quit")!=0);
+
 	
 	free(head);
 	
