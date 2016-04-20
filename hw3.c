@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -203,35 +204,26 @@ int main(int argc, char *argv[])
 	char *arguments;
 	char buf[NAME_SIZE];
 	struct sigaction act={{0}};
+	struct list *temp, *curr;
+	struct itimerval time={{0}};
 	
 	act.sa_handler=SIG_IGN;
 	
 	rv=sigaction(SIGUSR1, &act, NULL);
 	failcheck(rv, __LINE__-1);
-	
-// 	args[0]=strdup("./test");
-// 	for(i=1; i<5; i++)
-// 		args[i]=strdup("a");
-// 	
-// 	args[5]=NULL;
-// 		
-// 	
-// 	struct list *node = create_list_entry( 12345, args,  0);
-// 	list_insert(node);
-// 	struct list *node1 = create_list_entry( 54355, args,  1);
-// 	list_insert(node1);
-// 	struct list *node2 = create_list_entry( 545, args,  0);
-// 	list_insert(node2);
-// 	node=list_search();
-// 	node=list_next();
-// 	list_delete(545);
-// 	
-// 	printf("%d\n", list_print());
-// 	
+
 	list_init();
 	
 	do
 	{
+		time.it_interval.tv_sec=20;
+		time.it_interval.tv_usec=0;
+		time.it_value.tv_sec=20;
+		time.it_value.tv_usec=0;
+		
+		setitmer(ITIMER_REAL, &time, NULL);
+		
+		
 		pid=waitpid(-1, NULL, WNOHANG);
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
@@ -245,6 +237,12 @@ int main(int argc, char *argv[])
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
 			list_delete(pid);
+		
+		if(command==NULL)
+		{
+			printf("Invalid command\n");
+			continue;
+		}
 		
 		if((strcmp(command, "quit")!=0)&&(strcmp(command, "info")!=0))
 		{
@@ -306,11 +304,30 @@ int main(int argc, char *argv[])
 			else
 				printf("There are currently no active processes\n");
 		}
-		
-		
-	}while(strcmp(command, "quit")!=0);
-
+	}while((command==NULL)||(strcmp(command, "quit")!=0));
 	
+	temp=head->next;
+	
+	while(temp!=head)
+	{
+		curr=temp->next;
+		
+		rv=kill(temp->pid, SIGKILL);
+		failcheck(pid, __LINE__-1);
+		pid=waitpid(-1, NULL, WNOHANG);
+		failcheck(pid, __LINE__-1);
+		
+		for(i=0; i<ARGUMENT_NUMBER; i++)
+		{	
+			free(temp->args[i]);
+		}	
+		
+		free(temp);
+		temp=curr;
+	}
+	head->next=head;
+	
+	//printf("%d\n", list_print());
 	free(head);
 	
 	return(0);
