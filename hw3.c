@@ -195,35 +195,66 @@ int list_print()
 	return(total_nodes);
 }
 
+static void handler(int sig)
+{
+	volatile struct list *curr, *next;
+	volatile int rv;
+	
+	if(head->next != head )
+	{
+		curr=list_search();
+		next=list_next();
+		
+		rv=kill(curr->pid, SIGSTOP);
+		failcheck(rv, __LINE__-1);
+		
+		curr->run = 0;
+		
+		rv=kill(next->pid, SIGCONT);
+		failcheck(rv, __LINE__-1);
+		
+		next->run = 1;
+		
+		alarm(20);
+		rv=write(1,"BEEP!\n",7);
+		failcheck(rv, __LINE__-1);
+	}
+}
+
 int main(int argc, char *argv[])
 {
-	int i=0, rv;
+	int i=0, rv, flag=0;
 	pid_t pid;
 	char *args[ARGUMENT_NUMBER];
 	char *command;
 	char *arguments;
 	char buf[NAME_SIZE];
-	struct sigaction act={{0}};
+	struct sigaction act={{0}}, alarm_act={{0}};
 	struct list *temp, *curr;
-	struct itimerval time={{0}};
+// 	struct itimerval time={{0}};
 	
 	act.sa_handler=SIG_IGN;
 	
 	rv=sigaction(SIGUSR1, &act, NULL);
 	failcheck(rv, __LINE__-1);
-
+	
+	alarm_act.sa_handler=handler;
+	alarm_act.sa_flags = SA_RESTART;
+	
+	rv=sigaction(SIGALRM, &alarm_act, NULL);
+	failcheck(rv, __LINE__-1);
+	
+// 	time.it_interval.tv_sec=20;
+// 	time.it_interval.tv_usec=0;
+// 	time.it_value.tv_sec=20;
+// 	time.it_value.tv_usec=0;
+// 		
+// 	setitimer(ITIMER_REAL, &time, NULL);
+	
 	list_init();
 	
 	do
 	{
-		time.it_interval.tv_sec=20;
-		time.it_interval.tv_usec=0;
-		time.it_value.tv_sec=20;
-		time.it_value.tv_usec=0;
-		
-		setitmer(ITIMER_REAL, &time, NULL);
-		
-		
 		pid=waitpid(-1, NULL, WNOHANG);
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
@@ -279,8 +310,18 @@ int main(int argc, char *argv[])
 					rv=execvp(args[0], args);
 					failcheck(rv,__LINE__-1);
 				}
-				//printf("%d\n", pid);
-				list_insert(create_list_entry(pid, args,  0));
+				if(flag==0)
+				{	
+					list_insert(create_list_entry(pid, args,  1));
+					alarm(20);
+				}
+				else
+				{	
+					rv=kill(pid, SIGSTOP);
+					failcheck(rv, __LINE__-1);
+					list_insert(create_list_entry(pid, args,  0));
+				}
+				flag=1;
 			}
 			else
 			{
@@ -288,12 +329,12 @@ int main(int argc, char *argv[])
 				if(strcmp(command, "term")==0)
 				{
 					rv=kill(pid, SIGTERM);
-					failcheck(pid, __LINE__-1);
+					failcheck(rv, __LINE__-1);
 				}
 				else if(strcmp(command, "sig")==0)
 				{
 					rv=kill(pid, SIGUSR1);
-					failcheck(pid, __LINE__-1);
+					failcheck(rv, __LINE__-1);
 				}
 			}
 		}
