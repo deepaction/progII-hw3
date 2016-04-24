@@ -258,7 +258,18 @@ int main(int argc, char *argv[])
 		pid=waitpid(-1, NULL, WNOHANG);
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
+		{	
+			if(head->next!=head)
+			{
+				temp=list_next();
+			
+				temp->run=1;
+				rv=kill(temp->pid, SIGCONT);
+				failcheck(rv, __LINE__-1);
+				alarm(0);
+			}
 			list_delete(pid);
+		}
 		
 		printf("$ ");
 		fgets(buf, NAME_SIZE, stdin);
@@ -267,7 +278,17 @@ int main(int argc, char *argv[])
 		pid=waitpid(-1, NULL, WNOHANG);
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
+		{	
+// 			if(head->next!=head)
+// 			{
+// 				temp=list_next();
+// 			
+// 				temp->run=1;
+// 				rv=kill(temp->pid, SIGCONT);
+// 				failcheck(rv, __LINE__-1);
+// 			}
 			list_delete(pid);
+		}
 		
 		if(command==NULL)
 		{
