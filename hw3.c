@@ -12,7 +12,7 @@
 #define ARGUMENT_NUMBER 20
 #define NAME_SIZE 512
 
-struct list
+struct list //komvos tis listas
 {
 	pid_t pid;
 	char *args[ARGUMENT_NUMBER];
@@ -20,18 +20,18 @@ struct list
 	struct list *next;
 } *head;
 
-void failcheck(int rv, int line)
+void failcheck(int rv, int line) //synartisi gia elenxo sfalmatwn
 {
 	if(rv<0)
 	{
-		if(errno==ECHILD)
+		if(errno==ECHILD) //agnooume tin peripstosi na min yparxoyn paidia pou trexoun
 			return;
 		fprintf(stderr,"%s: %s (Error in line: %d)\n", __FILE__, strerror(errno) , line);
 		exit(-1);
 	}
 }
 
-void list_init()
+void list_init() //synartisi gia arxikopoiisi listas
 {
 	head=(struct list *)malloc(sizeof(struct list));
 	if(head==NULL)
@@ -43,7 +43,7 @@ void list_init()
 	head->next=head;
 }
 
-struct list *create_list_entry(pid_t pid, char *args[ARGUMENT_NUMBER], int run) 
+struct list *create_list_entry(pid_t pid, char *args[ARGUMENT_NUMBER], int run) //synartisi gia dimiourgia neou komvou
 {
 	
 	int i;
@@ -70,7 +70,7 @@ struct list *create_list_entry(pid_t pid, char *args[ARGUMENT_NUMBER], int run)
 	return(curr);
 }
 
-void list_insert(struct list *curr)
+void list_insert(struct list *curr) //synartisi gia eisagogi tou neou komvou stin lista
 {
 	struct list *temp = head;
 	
@@ -94,7 +94,7 @@ void list_insert(struct list *curr)
 	}
 }
 
-void list_delete(pid_t pid)
+void list_delete(pid_t pid) //synartisi gia diagrafi komvou apo tin lista
 {
 	int i;
 	struct list *freenode;
@@ -120,7 +120,7 @@ void list_delete(pid_t pid)
 	exit(-1);
 }
 
-struct list *list_search()
+struct list *list_search() //synartisi gia evresi diergasias pou trexei
 {
 	struct list *temp = head;
 	
@@ -137,7 +137,7 @@ struct list *list_search()
 	exit(-1);
 }
 
-struct list *list_next()
+struct list *list_next() //synartisi gia evresi tis epomenis diergasias pou tha prepei an treksei
 {
 	struct list *temp = head;
 	
@@ -156,7 +156,7 @@ struct list *list_next()
 	exit(-1);
 }
 
-int list_empty()
+int list_empty() //synartisi pou tsekarei an i lista einai adeia
 {
 	if(head->next==head)
 		return(0);
@@ -164,7 +164,7 @@ int list_empty()
 		return(-1);
 }
 
-int list_print()
+int list_print() //synartisi pou emfanizei oles tis diergasies pou trexoun
 {
 	int total_nodes=0, i;
 	struct list *temp = head;
@@ -195,7 +195,7 @@ int list_print()
 	return(total_nodes);
 }
 
-static void handler(int sig)
+static void handler(int sig) //synartisi xeiristi simatos
 {
 	volatile struct list *curr, *next;
 	volatile int rv;
@@ -225,41 +225,33 @@ int main(int argc, char *argv[])
 {
 	int i=0, rv, flag=0;
 	pid_t pid;
-	char *args[ARGUMENT_NUMBER];
-	char *command;
+	char *args[ARGUMENT_NUMBER]; //orismata twn programatwn
+	char *command; //apothikeuei tin edoli tou xristi
 	char *arguments;
-	char buf[NAME_SIZE];
+	char buf[NAME_SIZE]; // prosorini apothikeusi
 	struct sigaction act={{0}}, alarm_act={{0}};
-	struct list *temp, *curr;
-// 	struct itimerval time={{0}};
+	struct list *temp=NULL, *curr=NULL; //xrisimeuoun stin diaxeirisi tis listas
 	
-	act.sa_handler=SIG_IGN;
+	act.sa_handler=SIG_IGN; //blokarei to SIGUSR1
 	
 	rv=sigaction(SIGUSR1, &act, NULL);
 	failcheck(rv, __LINE__-1);
 	
-	alarm_act.sa_handler=handler;
+	alarm_act.sa_handler=handler; //blokarei to SIGALRM
 	alarm_act.sa_flags = SA_RESTART;
 	
 	rv=sigaction(SIGALRM, &alarm_act, NULL);
 	failcheck(rv, __LINE__-1);
-	
-// 	time.it_interval.tv_sec=20;
-// 	time.it_interval.tv_usec=0;
-// 	time.it_value.tv_sec=20;
-// 	time.it_value.tv_usec=0;
-// 		
-// 	setitimer(ITIMER_REAL, &time, NULL);
-	
-	list_init();
+
+	list_init(); //arxikopoiei tin lista
 	
 	do
 	{
-		pid=waitpid(-1, NULL, WNOHANG);
+		pid=waitpid(-1, NULL, WNOHANG); //perimenei ton termatismo ton paidiwn
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
 		{	
-			if(head->next!=head)
+			if(head->next!=head) //thetei ws trexousa diergasia tin epomeni apo auti pou termatistike
 			{
 				temp=list_next();
 			
@@ -268,29 +260,19 @@ int main(int argc, char *argv[])
 				failcheck(rv, __LINE__-1);
 				alarm(0);
 			}
-			list_delete(pid);
+			list_delete(pid); //afairei apo tin lista auto pou termatistike
 		}
 		
 		printf("$ ");
 		fgets(buf, NAME_SIZE, stdin);
 		command=strtok(buf, "  \n");
 		
-		pid=waitpid(-1, NULL, WNOHANG);
+		pid=waitpid(-1, NULL, WNOHANG); //perimenei ton termatismo ton paidiwn
 		failcheck(pid, __LINE__-1);
 		if(pid>0)
-		{	
-// 			if(head->next!=head)
-// 			{
-// 				temp=list_next();
-// 			
-// 				temp->run=1;
-// 				rv=kill(temp->pid, SIGCONT);
-// 				failcheck(rv, __LINE__-1);
-// 			}
-			list_delete(pid);
-		}
+			list_delete(pid); //afairei apo tin lista auto pou termatistike
 		
-		if(command==NULL)
+		if(command==NULL) //elenxei akyres edoles
 		{
 			printf("Invalid command\n");
 			continue;
@@ -319,11 +301,11 @@ int main(int argc, char *argv[])
 				args[i-1][strlen(args[i-1])-1]='\0';
 				args[i]=NULL;
 				
-				pid=fork();
+				pid=fork(); //dimiourgei to paidi
 					
 				if(pid==0)
 				{
-					act.sa_handler=SIG_DFL;
+					act.sa_handler=SIG_DFL; //apokathista ton xeiristi simatos gia to paidi
 	
 					rv=sigaction(SIGUSR1, &act, NULL);
 					failcheck(rv, __LINE__-1);
@@ -331,7 +313,7 @@ int main(int argc, char *argv[])
 					rv=execvp(args[0], args);
 					failcheck(rv,__LINE__-1);
 				}
-				if(flag==0)
+				if(flag==0) //trexei tin prwti fora
 				{	
 					list_insert(create_list_entry(pid, args,  1));
 					alarm(20);
@@ -342,11 +324,17 @@ int main(int argc, char *argv[])
 					failcheck(rv, __LINE__-1);
 					list_insert(create_list_entry(pid, args,  0));
 				}
-				flag=1;
+				flag=1; //egguate oti den tha trexei tis epomenes fores
 			}
 			else
 			{
-				pid=atoi(strtok(NULL, " "));
+				arguments=strtok(NULL, " ");
+				if(arguments==NULL) //elenxei akyres edoles
+				{
+					printf("Invalid command\n");
+					continue;
+				}
+				pid=atoi(arguments);
 				if(strcmp(command, "term")==0)
 				{
 					rv=kill(pid, SIGTERM);
@@ -366,11 +354,13 @@ int main(int argc, char *argv[])
 			else
 				printf("There are currently no active processes\n");
 		}
-	}while((command==NULL)||(strcmp(command, "quit")!=0));
+	}while((command==NULL)||(strcmp(command, "quit")!=0)); //vgainei otan o xristis patisei quit
+	
+	//katharizetai i lista kai apeleftheronetai oli i dyanmika desmeymeni mnimi
 	
 	temp=head->next;
 	
-	while(temp!=head)
+	while(temp!=head) 
 	{
 		curr=temp->next;
 		
@@ -389,8 +379,11 @@ int main(int argc, char *argv[])
 	}
 	head->next=head;
 	
-	//printf("%d\n", list_print());
 	free(head);
+	if(command!=NULL)
+		free(command);
+	if(arguments!=NULL)
+		free(arguments);	
 	
 	return(0);
 }

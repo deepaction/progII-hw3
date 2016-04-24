@@ -8,7 +8,7 @@
 
 volatile sig_atomic_t i;
 
-void failcheck(int rv, int line)
+void failcheck(int rv, int line) //synartisi elenxou sfalmatwn
 {
 	if(rv<0)
 	{
@@ -17,7 +17,7 @@ void failcheck(int rv, int line)
 	}
 }
 
-static void handler(int sig)
+static void handler(int sig) //synartisi xeiristwn simatwn
 {
 	i=0;
 }
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	sigset_t set;
 	struct sigaction act={{0}};
 	
-	if(argc!=5)
+	if(argc!=5) //termatizetai se periptosi pou ta orismata den einai swsta
 	{
 		fprintf(stderr, "%s: Wrong number of arguments (Error in line: %d)\n", __FILE__, __LINE__);
 		_exit(-1);
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		_exit(-1);
 	}
 	
-	act.sa_handler=handler;
+	act.sa_handler=handler; //orizei neo xeirismo simatos gia to SIGUSR1
 	
 	rv=sigaction(SIGUSR1, &act, NULL);
 	failcheck(rv, __LINE__-1);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	M=atoi(argv[2]);
 	pid=getpid();
 	
-	if(atoi(argv[4])==1)
+	if(atoi(argv[4])==1) //blokarei to sima SIGUSR1
 	{	
 		rv=sigemptyset(&set);
 		failcheck(rv, __LINE__-1);
